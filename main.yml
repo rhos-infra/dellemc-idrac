@@ -1,0 +1,29 @@
+---
+
+- hosts: localhost
+  gather_facts: False
+  tasks:
+    - name: Install Dell EMC OpenManage Python SDK
+      pip:
+        name: omsdk
+        state: present
+
+    - name: Check if can authenticate with iDRAC
+      uri:
+        url: "https://{{ idrac_ip }}/redfish/v1/Sessions"
+        user: "{{ idrac_user }}"
+        password: "{{ idrac_pass }}"
+        force_basic_auth: yes
+        validate_certs: "{{ validate_certs }}"
+
+    - name: Query server
+      import_tasks: query_idrac.yml
+      when: query_idrac is defined
+
+    - name: Power Action
+      import_tasks: power_action.yml
+      when: power_action is defined
+
+    - name: Set boot order
+      import_tasks: boot_order.yml
+      when: boot_order is defined
