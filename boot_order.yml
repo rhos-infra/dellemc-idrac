@@ -1,9 +1,9 @@
-- name: Set boot order to '{{ boot_order | default('''') }}'
+- name: Set boot order
   dellemc_configure_bios:
     idrac_ip: "{{ idrac_ip }}"
     idrac_port: "{{ idrac_port }}"
     idrac_user: "{{ idrac_user }}"
     idrac_pwd: "{{ idrac_pass }}"
-    boot_mode: "{{ boot_mode }}"
-    boot_sequence: "{{ boot_order }}"
+    boot_mode: "{{ boot_mode | default(omit)}}"
+    boot_sequence: "{{ boot_order | default(omit) }}"
     share_name: "{{ share_name }}"

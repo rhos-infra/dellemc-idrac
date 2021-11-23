@@ -39,6 +39,7 @@ subparsers:
                     required: True
                     choices:
                         - Bios
+                        - Uefi
                     default: 'Bios'
                     ansible_variable: 'boot_mode'
                 idrac-share-name:

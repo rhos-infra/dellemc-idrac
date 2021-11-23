@@ -20,10 +20,12 @@
       import_tasks: query_idrac.yml
       when: query_idrac is defined
 
+    - name: Set boot order
+      import_tasks: boot_order.yml
+      when: boot_order is defined or boot_mode is defined 
+
     - name: Power Action
       import_tasks: power_action.yml
       when: power_action is defined
 
-    - name: Set boot order
-      import_tasks: boot_order.yml
-      when: boot_order is defined
+
