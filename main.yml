@@ -3,6 +3,12 @@
 - hosts: localhost
   gather_facts: False
   tasks:
+    - name: Install Dell EMC OpenManage Python SDK
+      pip:
+        name: omsdk
+        state: present
+        extra_args: --user
+
     - name: Check if can authenticate with iDRAC
       uri:
         url: "https://{{ idrac_ip }}/redfish/v1/Sessions"
