@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a5ef704e_25c05384",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1018675
+      },
+      "writtenOn": "2021-11-24T09:25:10Z",
+      "side": 1,
+      "message": "IR folks recommended to add it back (although it didn\u0027t worked)",
+      "revId": "4c428ed63b53e979fa78545b29305f2ec572dc17",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    }
+  ]
+}
