@@ -1,0 +1,83 @@
+---
+
+# Will attempt to configure BIOS
+- name: Apply BIOS Configuration
+  block:
+    - name: Configure Bios
+      community.general.redfish_config:
+        category: Systems
+        command: SetBiosAttributes
+        bios_attributes: "{{ host_bios_configuration | default(omit) }}"
+        baseuri: "{{ inventory_hostname }}"
+        boot_order: "{{ host_boot_order | default(omit) }}"
+        username: "{{ ansible_user }}"
+        password: "{{ ansible_password }}"
+        timeout: "{{ idrac_timeout }}"
+      register: bios_attribute_change
+  # Error handling in edge scenarios
+  rescue:
+    - name: Proceed If New Configuration Is Committed But Not Applied
+      set_fact:
+        bios_attribute_change:
+          changed: True
+      when:
+        - "'HTTP Error 500 on PATCH request' in bios_attribute_change['msg']"
+        - "'Pending configuration values are already committed' in bios_attribute_change['msg']"
+
+# Will attempt to configure BIOS
+- name: Create BIOS Configuration Job (Schedule BIOS Setting Update) If Needed
+  block:
+    - name: Create Job
+      community.general.idrac_redfish_command:
+        category: Systems
+        command: CreateBiosConfigJob
+        baseuri: "{{ inventory_hostname }}"
+        username: "{{ ansible_user }}"
+        password: "{{ ansible_password }}"
+        timeout: "{{ idrac_timeout }}"
+      register: bios_config_job
+      when: bios_attribute_change is changed
+  # Error handling in edge scenarios
+  rescue:
+    - name: Proceed If Job Is Scheduled But Not Applied
+      set_fact:
+        bios_config_job:
+          changed: True
+      when:
+        - "'HTTP Error 500 on POST request' in bios_config_job['msg']"
+        - "'Pending configuration values are already committed' in bios_config_job['msg']"
+
+- name: Power Off iDRAC Before Applying New BIOS Settings If Needed
+  community.general.redfish_command:
+    category: Systems
+    command: PowerGracefulShutdown
+    baseuri: "{{ inventory_hostname }}"
+    username: "{{ ansible_user }}"
+    password: "{{ ansible_password }}"
+    timeout: "{{ idrac_timeout }}"
+  register: bios_idrac_poweroff
+  when: bios_config_job is changed
+
+- name: Power On iDRAC To Apply New BIOS Settings If Needed
+  community.general.redfish_command:
+    category: Systems
+    command: PowerOn
+    baseuri: "{{ inventory_hostname }}"
+    username: "{{ ansible_user }}"
+    password: "{{ ansible_password }}"
+    timeout: "{{ idrac_timeout }}"
+  register: bios_idrac_poweron
+  when:
+    - (bios_idrac_poweroff is successful) or (bios_idrac_poweroff is changed)
+    - bios_idrac_poweroff is not skipped
+
+- name: Notify User That Playbook Doesn't Wait For iDRAC To Complete Job
+  set_stats:
+    data:
+      WARNING: "This play does not wait until iDRAC completes the scheduled job."
+  run_once: True
+  when:
+    - bios_attribute_change is changed
+    - bios_config_job is changed
+    - bios_idrac_poweroff is successful
+    - bios_idrac_poweron is successful

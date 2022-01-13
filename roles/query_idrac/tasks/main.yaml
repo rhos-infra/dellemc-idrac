@@ -1,0 +1,16 @@
+---
+
+# TODO(vkhitrin): Consider exposing more information and/or let user customize collected info
+- name: Get iDRAC Info (This May Take Time)
+  community.general.redfish_info:
+    category: Systems
+    command: all
+    baseuri: "{{ inventory_hostname }}"
+    username: "{{ ansible_user }}"
+    password: "{{ ansible_password }}"
+    timeout: "{{ idrac_timeout }}"
+  register: idrac_info
+
+- name: Print Collected iDRAC Info
+  debug:
+    msg: "{{ idrac_info }}"

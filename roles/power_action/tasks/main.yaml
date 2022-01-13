@@ -1,0 +1,10 @@
+---
+
+- name: Execute Power Action On iDRAC
+  community.general.redfish_command:
+    category: Systems
+    command: "{{ power_action }}"
+    baseuri: "{{ inventory_hostname }}"
+    username: "{{ ansible_user }}"
+    password: "{{ ansible_password }}"
+    timeout: "{{ idrac_timeout }}"
