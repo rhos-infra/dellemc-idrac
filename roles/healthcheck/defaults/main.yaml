@@ -1,0 +1,8 @@
+---
+
+# HTTP protocol
+idrac_uri_protocol: 'https'
+# Location of RedFish REST API
+idrac_uri_redfish: '/redfish/v1/Sessions'
+# URI of host Redfish endpoint
+idrac_uri: "{{idrac_uri_protocol}}://{{ inventory_hostname }}{{ idrac_uri_redfish }}"

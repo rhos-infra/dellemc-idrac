@@ -1,0 +1,13 @@
+---
+
+- name: Get iDRAC Info (This May Take Time)
+  community.general.redfish_info:
+    category: Systems
+    command: all
+    baseuri: "{{ inventory_hostname }}"
+    username: "{{ ansible_user }}"
+    password: "{{ ansible_password }}"
+    timeout: "{{ idrac_timeout }}"
+  register: result
+
+- debug: var=result

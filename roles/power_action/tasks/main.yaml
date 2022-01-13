@@ -1,0 +1,25 @@
+---
+
+- name: "Perform Power Action On Host"
+  redfish_command:
+    category: Systems
+    command: "{{ host_play_variables['power_action'] }}"
+    baseuri: "{{ inventory_hostname }}"
+    username: "{{ ansible_user }}"
+    password: "{{ ansible_password }}"
+  register: idrac_power_state
+  ignore_errors: True
+  retries: "{{ task_retries }}"
+  until: "'URL' not in idrac_power_state['msg']"
+
+- debug: var=idrac_power_state['msg']
+
+- name: "Failed to Perform Power Action"
+  fail:
+    msg: "Reason: {{ idrac_power_state['msg'] }}"
+  # Override errors handling due to 'HTTP ERROR: 409' meaning host is powered on
+  when: >
+    idrac_power_state['msg'] not in [
+      'HTTP Error: 409',
+      'Action was successful'
+      ]

@@ -1,31 +1,72 @@
 ---
 
-- hosts: localhost
+- hosts: "{{ idrac_inventory_hosts }}"
+  connection: local
+  name: Dell iDRAC Hosts
   gather_facts: False
+  any_errors_fatal: True
   tasks:
-    - name: Install Dell EMC OpenManage Python SDK
-      pip:
-        name: omsdk
-        state: present
-
-    - name: Check if can authenticate with iDRAC
-      uri:
-        url: "https://{{ idrac_ip }}/redfish/v1/Sessions"
-        user: "{{ idrac_user }}"
-        password: "{{ idrac_pass }}"
-        force_basic_auth: yes
-        validate_certs: "{{ validate_certs }}"
-
-    - name: Query server
-      import_tasks: query_idrac.yml
-      when: query_idrac is defined
-
-    - name: Set boot order
-      import_tasks: boot_order.yml
-      when: boot_order is defined or boot_mode is defined 
-
+    - name: Generate Configuration For iDRAC
+      block:
+        - name: Build A List Of Variables For iDRAC
+          set_fact:
+            host_play_variables: "{{ hostvars[inventory_hostname] }}"
+        - name: Append Extra Vars To host_play_variables If Supplied
+          set_fact:
+            host_play_variables: "{{ host_play_variables | combine(hostvars[inventory_hostname][inventory_hostname]) }}"
+          when: "inventory_hostname in hostvars[inventory_hostname]"
+    - name: Healthcheck
+      import_role:
+        name: healthcheck
+    - name: Query iDRAC
+      include_role:
+        name: query_idrac
+      when: "'idrac_query' in host_play_variables"
+    - name: Configure Bios
+      vars:
+        host_bios_attributes: >-
+          {%- set placeholder_string='' -%}
+          {%- if 'bios_attributes' in host_play_variables -%}
+            {{ host_play_variables['bios_attributes'] }}
+          {%- else -%}
+            {{ placeholder_string }}
+          {%- endif -%}
+        host_boot_mode: >-
+          {%- set placeholder_string='' -%}
+          {%- if 'boot_mode' in host_play_variables -%}
+            {{ host_play_variables['boot_mode'] }}
+          {%- else -%}
+            {{ placeholder_string }}
+          {%- endif -%}
+        host_boot_order: >-
+          {%- set placeholder_string='' -%}
+          {%- if 'boot_order' in host_play_variables -%}
+            {%- if (host_play_variables['boot_order'] | type_debug) == 'str' -%}
+              {{ host_play_variables['boot_order'].split(',') }}
+            {%- elif (host_play_variables['boot_order'] | type_debug) == 'list' -%}
+              {{ host_play_variables['boot_order'] }}
+            {%- endif -%}
+          {%- else -%}
+            {{ placeholder_string }}
+          {%- endif -%}
+        host_bios_configuration: >-
+          {%- set bios_dict=dict() -%}
+          {%- if host_bios_attributes -%}
+            {{ bios_dict.update(host_bios_attributes) }}
+          {%- endif -%}
+          {%- if host_boot_mode -%}
+            {{ bios_dict.update({'BootMode': host_boot_mode}) }}
+          {%- endif -%}
+          {{ bios_dict }}
+      include_role:
+        name: bios_configuration
+      when:
+        # - (host_bios_attributes != '') or (host_boot_mode != '') or (host_boot_order != '')
+        # - (host_boot_order | type_debug == 'list') or (host_bios_attributes | type_debug == 'dict') or (host_boot_mode in ['Bios', 'Uefi'])
+        - (host_bios_attributes != '') or (host_bios_attributes | type_debug == 'dict')
+        - (host_boot_mode != '') or (host_boot_mode in ['Bios', 'Uefi'])
+        - (host_boot_order != '') or (host_boot_order | type_debug == 'list')
     - name: Power Action
-      import_tasks: power_action.yml
-      when: power_action is defined
-
-
+      include_role:
+        name: power_action
+      when: "'power_action' in host_play_variables"
