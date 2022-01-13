@@ -1,31 +1,95 @@
 ---
 
-- hosts: localhost
+- hosts: "{{ idrac_inventory_hosts }}"
+  connection: local
+  name: Dell iDRAC Hosts
   gather_facts: False
+  any_errors_fatal: True
+  vars:
+    # Placeholder variables
+    idrac_query: False
+    bios_attributes: False
+    boot_mode: False
+    boot_sources: False
+    power_action: False
+  pre_tasks:
+    # This is the most complex argument to build
+    # We will expect the user to pass it correctly, refer to examples
+    - name: Generate Configuration For iDRAC
+      block:
+        - name: Build A List Of Variables For iDRAC
+          set_fact:
+            host_play_variables: "{{ hostvars[inventory_hostname] }}"
+        - name: Ensure boot_sources is a List When Provided (Integrity of data is not verified)
+          set_fact:
+            boot_sources: "{{ boot_sources | from_json }}"
+          when: "'boot_sources' in host_play_variables"
+          failed_when:
+            - host_play_variables['boot_sources']
+            - host_play_variables['boot_sources'] | type_debug != 'list'
+        # This allows us to override variables for individual hosts
+        - name: Append Extra Vars To host_play_variables If Supplied
+          set_fact:
+            host_play_variables: "{{ host_play_variables | combine(hostvars[inventory_hostname][inventory_hostname]) }}"
+          when: "inventory_hostname in hostvars[inventory_hostname]"
+    # Perform validation only if the play supposed to do something
+    - name: Pre Play Validation
+      block:
+        - name: Check if can authenticate with iDRAC
+          include_role:
+            name: configuration
+            tasks_from: healthcheck
+      when: >
+        "'idrac_query' in hostvars" or
+        "'bios_attributes' in hostvars" or
+        "'boot_mode' in hostvars" or
+        "'boot_sources' in hostvars" or
+        "'power_action' in hostvars"
+
   tasks:
-    - name: Install Dell EMC OpenManage Python SDK
-      pip:
-        name: omsdk
-        state: present
+    - name: Query iDRAC
+      include_role:
+        name: configuration
+        tasks_from: query
+      when: "'idrac_query' in host_play_variables"
 
-    - name: Check if can authenticate with iDRAC
-      uri:
-        url: "https://{{ idrac_ip }}/redfish/v1/Sessions"
-        user: "{{ idrac_user }}"
-        password: "{{ idrac_pass }}"
-        force_basic_auth: yes
-        validate_certs: "{{ validate_certs }}"
-
-    - name: Query server
-      import_tasks: query_idrac.yml
-      when: query_idrac is defined
-
-    - name: Set boot order
-      import_tasks: boot_order.yml
-      when: boot_order is defined or boot_mode is defined 
+    - name: Configure Bios
+      # We parse each BIOS attribute individually in order to build a correct config
+      vars:
+        host_bios_attributes: >-
+          {%- if 'bios_attributes' in host_play_variables -%}
+            {{ host_play_variables['bios_attributes'] }}
+          {%- else -%}
+            {{ bios_attributes }}
+          {%- endif -%}
+        host_boot_mode: >-
+          {%- if 'boot_mode' in host_play_variables -%}
+            {{ host_play_variables['boot_mode'] }}
+          {%- else -%}
+            {{ boot_mode }}
+          {%- endif -%}
+        host_boot_sources: "{{ boot_sources }}"
+        host_bios_configuration: >-
+          {%- set bios_dict=dict() -%}
+          {%- if host_bios_attributes -%}
+            {{ bios_dict.update(host_bios_attributes) }}
+          {%- endif -%}
+          {%- if host_boot_mode -%}
+            {{ bios_dict.update({'BootMode': host_boot_mode}) }}
+          {%- endif -%}
+          {{ bios_dict }}
+      include_role:
+        name: configuration
+        tasks_from: configure_bios
+      when: >-
+          (host_bios_attributes) and (host_bios_attributes | type_debug == 'dict') or
+          (host_boot_mode) and (host_boot_mode in ['Bios', 'Uefi']) or
+          (host_boot_sources) and (host_boot_sources | type_debug == 'list')
 
     - name: Power Action
-      import_tasks: power_action.yml
-      when: power_action is defined
-
-
+      include_role:
+        name: configuration
+        tasks_from: power_action
+      when:
+        - "'power_action' in host_play_variables"
+        - "'power_action' in ['PowerOn', 'PowerForceOff', 'PowerForceRestart','PowerGracefulRestart', 'PowerGracefulShutdown', 'PowerReboot']"

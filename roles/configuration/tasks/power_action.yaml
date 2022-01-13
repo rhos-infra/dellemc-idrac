@@ -1,0 +1,14 @@
+---
+
+- name: Execute Power Action '{{ power_action }}' On iDRAC
+  community.general.redfish_command:
+    category: Systems
+    command: "{{ power_action }}"
+    baseuri: "{{ inventory_hostname }}"
+    username: "{{ ansible_user }}"
+    password: "{{ ansible_password }}"
+    timeout: "{{ idrac_timeout }}"
+  register: power_action_result
+  retries: "{{ task_retries }}"
+  until:
+    - "'EOF occurred in violation of protocol' not in power_action_result['msg']"

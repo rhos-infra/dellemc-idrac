@@ -1,0 +1,173 @@
+---
+
+# Will attempt to configure BIOS
+# boot order configuration will not work with Redfish
+
+# because iDRAC uses OEM extension for BootOrder (BootSources).
+# Using a workaround for now using OpenManage SDK.
+# TODO(vkhitrin): Attempt to add support for SetBootOrder in community.general.idrac_redfish_command
+# This will reboot the iDRAC and schedule job
+- name: Apply BIOS Configuration - Boot Sources
+  block:
+    - name: Configure BIOS Attributes - Boot Sources
+      dellemc.openmanage.idrac_bios:
+        idrac_ip: "{{ inventory_hostname }}"
+        idrac_user: "{{ ansible_user }}"
+        idrac_password: "{{ ansible_password }}"
+        boot_sources: "{{ host_boot_sources }}"
+      register: boot_sources_change
+      when: host_boot_sources
+
+- name: Save Result Of Boot Sources Configuration
+  set_fact:
+    boot_sources_result: >-
+      {%- set helper_dict=dict() -%}
+      {%- if boot_sources_change is skipped -%}
+       {{ helper_dict.update({'skipped': True}) }}
+      {%- elif 'No changes found to apply.' in boot_sources_change['msg']['Message'] -%}
+        {{ helper_dict.update({'successful': True}) }}
+      {%- elif 'Status' in boot_sources_change['msg'] and 'Success' in boot_sources_change['msg']['Status'] -%}
+        {{ helper_dict.update({'changed': True}) }}
+      {%- endif -%}
+      {{ helper_dict }}
+
+- name: Notify User That Boot Sources Were Reconfigured
+  ansible.builtin.set_stats:
+    data:
+      NOTICE:
+        - "Boot Sources for iDRAC {{inventory_hostname }} were reconfigured and applied."
+  when: boot_sources_result is changed
+
+# This will not reboot the iDRAC and schedule job
+- name: Apply BIOS Configuration - Attributes
+  block:
+    - name: Configure BIOS Attributes
+      community.general.redfish_config:
+        category: Systems
+        command: SetBiosAttributes
+        bios_attributes: "{{ host_bios_configuration }}"
+        baseuri: "{{ inventory_hostname }}"
+        username: "{{ ansible_user }}"
+        password: "{{ ansible_password }}"
+        timeout: "{{ idrac_timeout }}"
+      register: bios_attribute_change
+      retries: "{{ task_retries }}"
+      until:
+        - "'EOF occurred in violation of protocol' not in bios_attribute_change['msg']"
+  # Error handling in edge scenarios
+  rescue:
+    - name: Proceed If New Configuration Is Committed But Not Applied
+      set_fact:
+        bios_attribute_change:
+          changed: True
+      when:
+        - "'HTTP Error 500 on PATCH request' in bios_attribute_change['msg']"
+        - "'Pending configuration values are already committed' in bios_attribute_change['msg']"
+  when:  host_bios_configuration
+
+- name: Fail If Can't Handle Bios Configuration Error
+  fail:
+    msg:
+      - 'Encountered an error that is deemed as FATAL.'
+      - 'Error:'
+      - "{{ bios_attribute_change['msg'] }}"
+  when:
+    - bios_attribute_change is failed
+    - bios_attribute_change is not changed
+    - bios_attribute_change is not skipped
+
+# Will attempt to configure BIOS
+- name: Create BIOS Configuration Job (Schedule BIOS Setting Update) If Needed
+  block:
+    - name: Create Job
+      community.general.idrac_redfish_command:
+        category: Systems
+        command: CreateBiosConfigJob
+        baseuri: "{{ inventory_hostname }}"
+        username: "{{ ansible_user }}"
+        password: "{{ ansible_password }}"
+        timeout: "{{ idrac_timeout }}"
+      register: bios_config_job
+      when: bios_attribute_change is changed
+      retries: "{{ task_retries }}"
+      until:
+        - "'EOF occurred in violation of protocol' not in bios_config_job['msg']"
+  # Error handling in edge scenarios
+  rescue:
+    - name: Proceed If Job Is Scheduled But Not Applied
+      set_fact:
+        bios_config_job:
+          changed: False
+      when:
+        - "'HTTP Error 500 on POST request' in bios_config_job['msg']"
+        - "'Pending configuration values are already committed' in bios_config_job['msg']"
+
+- name: Power Off iDRAC Before Applying New BIOS Settings If Needed
+  vars:
+    power_action: 'PowerGracefulShutdown'
+  import_role:
+    name: configuration
+    tasks_from: power_action
+  when: bios_config_job is changed
+
+- name: Save Power Action Result Of PowerGracefulShutdown
+  set_fact:
+    # From our point of view there is no difference between successful and changed
+    # but keeping it for the sake of consistency
+    bios_idrac_poweroff: >-
+      {%- set status_dict=dict() -%}
+      {%- if power_action_result is skipped -%}
+        {{ status_dict.update({'skipped': True}) }}
+      {%- elif power_action_result is successful -%}
+        {{ status_dict.update({'successful': True}) }}
+      {%- elif power_action_result is changed -%}
+        {{ status_dict.update({'changed': True}) }}
+      {%- endif -%}
+      {{ status_dict }}
+
+- name: Power On iDRAC To Apply New BIOS Settings If Needed
+  vars:
+    power_action: 'PowerOn'
+  import_role:
+    name: configuration
+    tasks_from: power_action
+  when:
+    - (bios_idrac_poweroff is successful) or (bios_idrac_poweroff is changed)
+    - bios_idrac_poweroff is not skipped
+
+- name: Save Power Action Result Of PowerOn
+  set_fact:
+    bios_idrac_poweron: >-
+      {%- set status_dict=dict() -%}
+      {%- if power_action_result is skipped -%}
+        {{ status_dict.update({'skipped': True}) }}
+      {%- elif power_action_result is successful -%}
+        {{ status_dict.update({'successful': True}) }}
+      {%- elif power_action_result is changed -%}
+        {{ status_dict.update({'changed': True}) }}
+      {%- endif -%}
+      {{ status_dict }}
+
+- name: Notify User That Playbook Doesn't Wait For iDRAC To Complete Job
+  ansible.builtin.set_stats:
+    data:
+      WARNING:
+        - "This play does not wait until iDRAC completes the scheduled job for {{ inventory_hostname }}."
+  when:
+    - bios_attribute_change is changed
+    - bios_config_job is changed
+    - (bios_idrac_poweroff is successful) or (bios_idrac_poweroff is changed)
+    - bios_idrac_poweron is successful
+
+- name: Notify User That BIOS Has Configuration That Needs To Be Scheduled
+  ansible.builtin.set_stats:
+    data:
+      FAILURE:
+        - 'BIOS has pending configuration that needs to be applied.'
+        - 'If you wish to delete all scheduled/pending jobs from iDRAC this can be done remotely, execute:'
+        - "ssh {{ ansible_user }}@{{ inventory_hostname }} 'racadm jobqueue delete -i JID_CLEARALL_FORCE'"
+  when:
+    - bios_config_job is not changed
+    - bios_config_job is not skipped
+    - bios_idrac_poweroff is skipped
+    - bios_idrac_poweron is skipped
