@@ -1,0 +1,31 @@
+---
+
+- name: Ensure Jobs Are Completed Before Any Restart Action
+  block:
+    - name: Set Facts
+      set_fact:
+        idrac_runnig_jobs: {}
+
+    - name: Retrieve Jobs From iDRAC
+      include_role:
+        name: configuration
+        tasks_from: retrieve_idrac_jobs
+
+    - name: Wait For Running Jobs To Complete
+      include_role:
+        name: configuration
+        tasks_from: running_jobs
+  when: power_action in ['PowerForceRestart', 'PowerGracefulRestart', 'PowerReboot']
+
+- name: Execute Power Action '{{ power_action }}' On iDRAC
+  community.general.redfish_command:
+    category: Systems
+    command: "{{ power_action }}"
+    baseuri: "{{ inventory_hostname }}"
+    username: "{{ ansible_user }}"
+    password: "{{ ansible_password }}"
+    timeout: "{{ idrac_timeout }}"
+  register: power_action_result
+  retries: "{{ task_retries }}"
+  until:
+    - "'EOF occurred in violation of protocol' not in power_action_result['msg']"
