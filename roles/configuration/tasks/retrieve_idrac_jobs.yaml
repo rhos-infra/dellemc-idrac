@@ -1,0 +1,43 @@
+---
+
+- name: Retrieve All Jobs From iDRAC
+  ansible.builtin.uri:
+    url: "{{ idrac_uri }}/Managers/iDRAC.Embedded.1/Jobs"
+    user: "{{ ansible_user }}"
+    password: "{{ ansible_password }}"
+    force_basic_auth: True
+    return_content: True
+    validate_certs: "{{ validate_ssl_certs }}"
+  register: idrac_jobs
+  retries: "{{ task_retries }}"
+  until: idrac_jobs['status'] == 200
+
+- name: Query Each Job Present In iDRAC
+  # Can not use map filter due to special character '@'
+  # Forced to use jinja2 loop
+  # Jobs that are being executed will not be able to be deleted, we will attempt to wait
+  # for them to finish
+  # Also not all iDRAC versions support Deleting Job Queue via Redfish
+  vars:
+    idrac_jobs_uris: >-
+      {%- set jobs=[] -%}
+      {%- for job in idrac_jobs['json']['Members'] -%}
+        {{ jobs.append(idrac_uri_protocol + '://' + inventory_hostname + job['@odata.id']) }}
+      {%- endfor -%}
+      {{ jobs }}
+  ansible.builtin.uri:
+    url: "{{ item }}"
+    method: 'GET'
+    user: "{{ ansible_user }}"
+    password: "{{ ansible_password }}"
+    force_basic_auth: True
+    return_content: True
+    validate_certs: "{{ validate_ssl_certs }}"
+  register: idrac_job
+  retries: "{{ task_retries }}"
+  delay: 5
+  until: >-
+    (idrac_job['status'] == 200) or
+    (idrac_job['status'] == 400 and idrac_job['json']['error']['@Message.ExtendedInfo'] | selectattr('Message', 'contains', 'Invalid Job ID') | list)
+  loop: "{{ idrac_jobs_uris }}"
+  when: idrac_jobs['json']['Members']

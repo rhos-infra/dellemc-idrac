@@ -1,0 +1,81 @@
+---
+
+- name: Set Facts
+  set_fact:
+    idrac_scheduled_bios_jobs: {}
+    idrac_runnig_jobs: {}
+
+- name: Retrieve Jobs From iDRAC
+  include_role:
+    name: configuration
+    tasks_from: retrieve_idrac_jobs
+
+- name: Check If There Are Non Completed Jobs
+  block:
+    - name: Check For Scheduled BIOSConfiguration Jobs
+      set_fact:
+        idrac_scheduled_bios_jobs: "{{ idrac_job['results'] | selectattr('content', 'contains', 'Task successfully scheduled') | selectattr('content', 'contains', 'BIOSConfiguration') | list }}"
+      when: idrac_job['results'] | selectattr('content', 'contains', 'Task successfully scheduled') | selectattr('content', 'contains', 'BIOSConfiguration') | list
+
+    - name: Check For Running Jobs
+      set_fact:
+        idrac_runnig_jobs: "{{ idrac_job['results'] | selectattr('content', 'contains', 'Job in progress') | list }}"
+      when: idrac_job['results'] | selectattr('content', 'contains', 'Job in progress') | list
+  when: idrac_job['results']
+
+- name: Deleting BIOSConfiguration Scheduled Jobs
+  # Can not use map filter due to special character '@'
+  # Forced to use jinja2 loop
+  # Jobs that are being executed will not be able to be deleted, we will attempt to wait
+  # for them to finish
+  # Also not all iDRAC versions support Deleting Job Queue via Redfish
+  vars:
+    idrac_jobs_uris: >-
+      {%- set jobs=[] -%}
+      {%- for job in idrac_scheduled_bios_jobs -%}
+        {{ jobs.append(idrac_uri_protocol + '://' + inventory_hostname + job['json']['@odata.id']) }}
+      {%- endfor -%}
+      {{ jobs }}
+  ansible.builtin.uri:
+    url: "{{ item }}"
+    method: 'DELETE'
+    user: "{{ ansible_user }}"
+    password: "{{ ansible_password }}"
+    force_basic_auth: True
+    return_content: True
+    validate_certs: "{{ validate_ssl_certs }}"
+  register: idrac_scheduled_job_deletion
+  retries: "{{ task_retries }}"
+  delay: 5
+  until: >-
+    (idrac_scheduled_job_deletion['status'] == 200) or
+    (idrac_scheduled_job_deletion['status'] == 400 and idrac_scheduled_job_deletion['json']['error']['@Message.ExtendedInfo'] | selectattr('Message', 'contains', 'Invalid Job ID') | list)
+  loop: "{{ idrac_jobs_uris }}"
+  when: idrac_scheduled_bios_jobs
+
+- name: Wait For Running Jobs To Complete
+  include_role:
+    name: configuration
+    tasks_from: running_jobs
+
+- name: Clear Pending BIOS Configuration For iDRAC If Needed
+  ansible.builtin.uri:
+    url: "{{ idrac_uri }}/Systems/System.Embedded.1/Bios/Settings/Actions/Oem/DellManager.ClearPending"
+    method: 'POST'
+    headers:
+      Content-Type: application/json
+    body_format: 'json'
+    body:
+    status_code:
+      - 200
+      - 400
+    user: "{{ ansible_user }}"
+    password: "{{ ansible_password }}"
+    force_basic_auth: True
+    return_content: True
+    validate_certs: "{{ validate_ssl_certs }}"
+  register: idrac_clear_pending
+  retries: "{{ task_retries }}"
+  until: >-
+    (idrac_clear_pending['status'] == 200) or
+    (idrac_clear_pending['status'] == 400 and ('There are no pending values to be cleared' in idrac_clear_pending['content']))

@@ -1,0 +1,13 @@
+---
+
+- name: iDRAC Healtcheck
+  ansible.builtin.uri:
+    url: "{{ idrac_uri }}/Sessions"
+    user: "{{ ansible_user }}"
+    password: "{{ ansible_password }}"
+    force_basic_auth: True
+    return_content: True
+    validate_certs: "{{ validate_ssl_certs }}"
+  register: idrac_healtcheck
+  retries: "{{ task_retries | default(30) }}"
+  until: idrac_healtcheck['status'] == 200

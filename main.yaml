@@ -1,0 +1,98 @@
+---
+
+- hosts: "{{ hosts_pattern }}"
+  connection: local
+  name: Dell iDRAC Hosts
+  gather_facts: False
+  any_errors_fatal: True
+  vars:
+    # Placeholder variables
+    idrac_query: False
+    bios_attributes: False
+    boot_mode: False
+    boot_order: False
+    power_action: False
+  pre_tasks:
+    - name: Build A List Of Variables For iDRAC
+      set_fact:
+        host_play_variables: "{{ hostvars[inventory_hostname] }}"
+
+    # This allows us to override variables for individual hosts
+    - name: Append Extra Vars To host_play_variables If Supplied
+      set_fact:
+        host_play_variables: "{{ host_play_variables | combine(hostvars[inventory_hostname][inventory_hostname]) }}"
+      when: "inventory_hostname in hostvars[inventory_hostname]"
+
+    - name: Check if can authenticate with iDRAC
+      include_role:
+        name: configuration
+        tasks_from: healthcheck
+      when: |-
+        'idrac_query' in host_play_variables or
+        'bios_attributes' in host_play_variables or
+        'boot_mode' in host_play_variables or
+        'boot_order' in host_play_variables or
+        'power_action' in host_play_variables
+
+  tasks:
+    - name: Query iDRAC
+      include_role:
+        name: configuration
+        tasks_from: query
+      when: "'idrac_query' in host_play_variables"
+
+    - name:  Configure Bioss
+      vars:
+        host_bios_attributes: >-
+          {%- if 'bios_attributes' in host_play_variables -%}
+            {{ host_play_variables['bios_attributes'] }}
+          {%- else -%}
+            {{ bios_attributes }}
+          {%- endif -%}
+        host_boot_mode: >-
+          {%- if 'boot_mode' in host_play_variables -%}
+            {{ host_play_variables['boot_mode'] }}
+          {%- else -%}
+            {{ boot_mode }}
+          {%- endif -%}
+        host_boot_order: >-
+          {%- if 'boot_order' in host_play_variables -%}
+            {%- if (host_play_variables['boot_order'] | type_debug) == 'str' -%}
+              {{ host_play_variables['boot_order'].split(',') }}
+            {%- elif (host_play_variables['boot_order'] | type_debug) == 'list' -%}
+              {{ host_play_variables['boot_order'] }}
+            {%- endif -%}
+          {%- else -%}
+            {{ boot_order }}
+          {%- endif -%}
+        host_bios_configuration: >-
+          {%- set bios_dict=dict() -%}
+          {%- if host_bios_attributes -%}
+            {{ bios_dict.update(host_bios_attributes) }}
+          {%- endif -%}
+          {%- if host_boot_mode -%}
+            {{ bios_dict.update({'BootMode': host_boot_mode}) }}
+          {%- endif -%}
+          {{ bios_dict }}
+      block:
+        - name: Check BIOS Configuration Status
+          include_role:
+            name: configuration
+            tasks_from: check_bios
+        - name: Update BIOS Configuration
+          include_role:
+            name: configuration
+            tasks_from: configure_bios
+      # We parse each BIOS attribute individually in order to build a correct config
+      when: >-
+          (host_bios_attributes) and (host_bios_attributes | type_debug == 'dict') or
+          (host_boot_mode) and (host_boot_mode in ['Bios', 'Uefi']) or
+          (host_boot_order) and (host_boot_order | type_debug == 'list')
+
+    - name: Power Action
+      include_role:
+        name: configuration
+        tasks_from: power_action
+      when:
+        - "'power_action' in host_play_variables"
+        - host_play_variables['power_action'] in ['PowerOn', 'PowerForceOff', 'PowerForceRestart','PowerGracefulRestart', 'PowerGracefulShutdown', 'PowerReboot']
