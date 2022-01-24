@@ -39,6 +39,30 @@
       },
       "revId": "aab219fbbfd18e0f708b9210bbbb837951fca16e",
       "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9ced9661_4b307141",
+        "filename": "roles/configuration/tasks/check_bios.yaml",
+        "patchSetId": 6
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 1016438
+      },
+      "writtenOn": "2022-01-24T14:21:53Z",
+      "side": 1,
+      "message": "I will do it, no reason not to do that.",
+      "parentUuid": "60f092f1_82a9d82b",
+      "range": {
+        "startLine": 19,
+        "startChar": 0,
+        "endLine": 19,
+        "endChar": 11
+      },
+      "revId": "aab219fbbfd18e0f708b9210bbbb837951fca16e",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
     }
   ]
 }
