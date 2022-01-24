@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ad7f7b81_9e0e8c9d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1018675
+      },
+      "writtenOn": "2022-01-24T11:52:14Z",
+      "side": 1,
+      "message": "Great job",
+      "revId": "aab219fbbfd18e0f708b9210bbbb837951fca16e",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "60f092f1_82a9d82b",
+        "filename": "roles/configuration/tasks/check_bios.yaml",
+        "patchSetId": 6
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 1018675
+      },
+      "writtenOn": "2022-01-24T11:52:14Z",
+      "side": 1,
+      "message": "not a must but it would be easier to read if you will add a new line between those tasks",
+      "range": {
+        "startLine": 19,
+        "startChar": 0,
+        "endLine": 19,
+        "endChar": 11
+      },
+      "revId": "aab219fbbfd18e0f708b9210bbbb837951fca16e",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735"
+    }
+  ]
+}
