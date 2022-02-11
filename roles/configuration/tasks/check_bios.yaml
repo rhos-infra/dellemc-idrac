@@ -78,4 +78,4 @@
   retries: "{{ task_retries }}"
   until: >-
     (idrac_clear_pending['status'] == 200) or
-    (idrac_clear_pending['status'] == 400 and ('There are no pending values to be cleared' in idrac_clear_pending['content']))
+    (idrac_clear_pending['status'] == 400 and idrac_clear_pending['json']['error']['@Message.ExtendedInfo'] | selectattr('Message', 'contains', 'There are no pending values to be cleared') | list)
