@@ -26,9 +26,9 @@ subparsers:
                     help: |
                         Amount of retries attempted in tasks.
                         Example:
-                        30
+                        50
                     required: False
-                    default: 30
+                    default: 50
                     ansible_variable: task_retries
                 timeout:
                     type: int
@@ -83,11 +83,23 @@ subparsers:
                           - HardDisk.List.1-1
                     required: False
                     ansible_variable: 'boot_order'
+                delete-previous-jobs:
+                    type: Flag
+                    help: |
+                        Remove previously completed jobs from iDRAC job inventory.
+                    required: False
+                    ansible_variable: 'delete_previous_idrac_jobs'
             - title: iDRAC power management
               options:
+                racreset:
+                    type: Flag
+                    help: |
+                        Performs 'GracefulRestart' on iDRAC controller.
+                    required: False
+                    ansible_variable: 'racreset'
                 power-action:
                     type: Value
-                    help: 'Execute power action on iDRAC.'
+                    help: 'Execute power action on iDRAC host.'
                     required: False
                     choices:
                         - 'PowerOn'
