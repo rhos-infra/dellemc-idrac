@@ -51,7 +51,13 @@ Clone this repository:
 git clone https://github.com/rhos-infra/dellemc-idrac
 ```
 
-Install required Ansible galaxy collection:
+Install required pip packages:
+
+```bash
+pip install -r plugin_requirements.txt
+```
+
+Install required Ansible galaxy collections:
 
 ```bash
 ansible-galaxy collection install -r requirements.yaml
@@ -116,17 +122,19 @@ dell-idrac2.example.com:  # hostname that we wish to override.
       - 'HardDisk.List.1-1'
 ```
 
-| Ansible Variable        | Infrared CLI Argument  | Description                                                          | Default | Ansible Example                                                         | Infrared Example                                                             |
-|-------------------------|------------------------|----------------------------------------------------------------------|---------|-------------------------------------------------------------------------|------------------------------------------------------------------------------|
-| `hosts_pattern` | `--hosts-pattern`    | Ansible hosts string.<br>**Required**                                | `null`  | `dell-idrac1.example.com,dell-idrac2.example.com`                       | `--hosts-pattern 'dell-idrac1.example.com,dell-idrac2.example.com'`        |
-| `validate_ssl_certs`        | `--validate-ssl-certs` | Validate SSL certificates.                                           | `False` | `True`                                                                  | `--validate-ssl-certs`                                                       |
-| `task_retries`          | `--task-retries`       | Amount of retries attempted in supported tasks.                      | `30`    | `20`                                                                    | `--task-retries 20`                                                          |
-| `idrac_timeout`         | `--timeout`            | Timeout in secdonds for URL requests to OOB(out of band) controller. | `30`    | `20`                                                                    | `--timeout 20`                                                               |
-| `idrac_query`           | `--query`              | Whether to query iDRAC for info.                                     | `False` | `True`                                                                  | `--query`                                                                    |
-| `boot_mode`             | `--boot-mode`          | iDRAC BIOS boot mode.                                                | `Bios`  | `Uefi`                                                                  | `--boot-mode 'Uefi'`                                                         |
-| `bios_attributes`       | `--bios-attributes`    | iDRAC BIOS attributes.                                               | `False` | LogicalProc: Enabled<br>SriovGlobalEnable: Enabled'                     | `--bios-attributes LogicalProc:Enabled,Test:Enabled`                         |
-| `boot_order`            | `--boot-order`         | iDRAC BIOS boot order.                                               | `False` | - NIC.Integrated.1-3-1<br>- NIC.Integrated.1-1-1<br>- HardDisk.List.1-1 | `--boot-order 'NIC.Integrated.1-3-1,NIC.Integrated.1-1-1,HardDisk.List.1-1'` |
-| `power_action`          | `--power-action`       | Execute power action on iDRAC.                                       | `False` | `PowerOn`                                                               | `--power-action 'PowerOn'`                                                   |                                                   |                                           |
+| Ansible Variable             | Infrared CLI Argument          | Description                                                          | Default | Ansible Example                                                   | Infrared Example                                                             |
+|------------------------------|--------------------------------|----------------------------------------------------------------------|---------|-------------------------------------------------------------------|------------------------------------------------------------------------------|
+| `hosts_pattern`              | `--hosts-pattern`              | Ansible hosts string. **Required**                                   | `null`  | `dell-idrac1.example.com,dell-idrac2.example.com`                 | `--hosts-pattern 'dell-idrac1.example.com,dell-idrac2.example.com'`          |
+| `validate_ssl_certs`         | `--validate-ssl-certs`         | Validate SSL certificates.                                           | `False` | `True`                                                            | `--validate-ssl-certs`                                                       |
+| `task_retries`               | `--task-retries`               | Amount of retries attempted in supported tasks.                      | `30`    | `20`                                                              | `--task-retries 20`                                                          |
+| `idrac_timeout`              | `--timeout`                    | Timeout in secdonds for URL requests to OOB(out of band) controller. | `30`    | `20`                                                              | `--timeout 20`                                                               |
+| `idrac_query`                | `--query`                      | Whether to query iDRAC for info.                                     | `False` | `True`                                                            | `--query`                                                                    |
+| `boot_mode`                  | `--boot-mode`                  | iDRAC BIOS boot mode.                                                | `Bios`  | `Uefi`                                                            | `--boot-mode 'Uefi'`                                                         |
+| `bios_attributes`            | `--bios-attributes`            | iDRAC BIOS attributes.                                               | `False` | LogicalProc: Enabled SriovGlobalEnable: Enabled'                  | `--bios-attributes LogicalProc:Enabled,Test:Enabled`                         |
+| `boot_order`                 | `--boot-order`                 | iDRAC BIOS boot order.                                               | `False` | - NIC.Integrated.1-3-1 - NIC.Integrated.1-1-1 - HardDisk.List.1-1 | `--boot-order 'NIC.Integrated.1-3-1,NIC.Integrated.1-1-1,HardDisk.List.1-1'` |
+| `power_action`               | `--power-action`               | Execute power action on iDRAC.                                       | `False` | `PowerOn`                                                         | `--power-action 'PowerOn'`                                                   |
+| `delete_previous_idrac_jobs` | `--delete_previous_idrac_jobs` | Remove previously completed jobs from iDRAC job inventory.           | `False` | `True`                                                            | `--delete-previous-jobs`                                                     |
+| `racreset`                   | `--racreset`                   | Performs 'GracefulRestart' on iDRAC controller.                      | `False` | `True`                                                            | `--racreset`                                                                 |
 
 ## Usage
 
