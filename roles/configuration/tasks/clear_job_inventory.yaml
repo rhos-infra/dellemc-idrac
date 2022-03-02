@@ -1,0 +1,45 @@
+---
+
+- include_role:
+    name: configuration
+    tasks_from: retrieve_idrac_jobs
+
+- name: Check If There Populated Jobs
+  block:
+    - name: Check For Completed BIOS Configuration Jobs
+      set_fact:
+        idrac_previous_bios_jobs: "{{ idrac_job['results'] | selectattr('content', 'contains', 'Job completed successfully.') | selectattr('content', 'contains', 'BIOSConfiguration') | list }}"
+      when: idrac_job['results'] | selectattr('content', 'contains', 'Job completed successfully.') | selectattr('content', 'contains', 'BIOSConfiguration') | list
+  when: idrac_job['results']
+
+- name: Deleting Previous BIOS Jobs From Inventory
+  # Can not use map filter due to special character '@'
+  # Forced to use jinja2 loop
+  # Jobs that are being executed will not be able to be deleted, we will attempt to wait
+  # for them to finish
+  # Also not all iDRAC versions support Deleting Job Queue via Redfish
+  vars:
+    idrac_jobs_uris: >-
+      {%- set jobs=[] -%}
+      {%- for job in idrac_previous_bios_jobs -%}
+        {{ jobs.append(idrac_uri_protocol + '://' + inventory_hostname + job['json']['@odata.id']) }}
+      {%- endfor -%}
+      {{ jobs }}
+  ansible.builtin.uri:
+    url: "{{ item }}"
+    method: 'DELETE'
+    user: "{{ ansible_user }}"
+    password: "{{ ansible_password }}"
+    force_basic_auth: True
+    return_content: True
+    validate_certs: "{{ validate_ssl_certs }}"
+  register: idrac_previous_bios_job_deletion
+  retries: "{{ task_retries }}"
+  delay: 5
+  until: >-
+    (idrac_previous_bios_job_deletion['status'] == 200) or
+    (idrac_previous_bios_job_deletion['status'] == 400 and idrac_previous_bios_job_deletion['json']['error']['@Message.ExtendedInfo'] | selectattr('Message', 'contains', 'Invalid Job ID') | list)
+  loop: "{{ idrac_jobs_uris }}"
+  when:
+    - idrac_previous_bios_jobs is defined
+    - idrac_job

@@ -4,8 +4,6 @@ idrac_uri_protocol: 'https'
 idrac_uri_redfish: '/redfish/v1'
 # URI of host Redfish endpoint
 idrac_uri: "{{idrac_uri_protocol}}://{{ inventory_hostname }}{{ idrac_uri_redfish }}"
-# Validate SSL certificates when accessing URI, this is used when playbook not invoked by infrared
-validate_ssl_certs: False
 # Amount of retries for relevant tasks, this is used when playbook not invoked by infrared
 task_retries: 30
 # Timeout in secdonds for URL requests to OOB(out of band) controller,

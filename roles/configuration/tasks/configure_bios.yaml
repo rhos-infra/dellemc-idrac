@@ -6,15 +6,7 @@
     - name: Set BIOS Configuration
       community.general.redfish_config:
         category: Systems
-        command: |
-          {%- set command_list=[] -%}
-          {%- if host_boot_order -%}
-            {{ command_list.append('SetBootOrder') }}
-          {%- endif -%}
-          {%- if host_bios_configuration -%}
-            {{ command_list.append('SetBiosAttributes') }}
-          {%- endif -%}
-          {{ command_list }}
+        command: "{{ bios_config_command }}"
         bios_attributes: "{{ host_bios_configuration }}"
         boot_order: "{{ host_boot_order }}"
         baseuri: "{{ inventory_hostname }}"
@@ -92,7 +84,7 @@
 
 - name: Power Off iDRAC Before Applying New BIOS Settings If Needed
   vars:
-    power_action: 'PowerGracefulShutdown'
+    power_action: 'PowerForceOff'
   import_role:
     name: configuration
     tasks_from: power_action
@@ -101,7 +93,7 @@
     bios_config_change is changed or
     bios_config_job is changed
 
-- name: Save Power Action Result Of PowerGracefulShutdown
+- name: Save Power Action Result Of 'PowerForceOff'
   set_fact:
     # From our point of view there is no difference between successful and changed
     # but keeping it for the sake of consistency
@@ -116,10 +108,9 @@
       {%- endif -%}
       {{ status_dict }}
 
-# https:/issues.redhat.com/RHOSINFRA-4410
-# ansible.builtin.pause doesn't work when invoked through infrared
-- name: Sleep To Let iDRAC Shutdown Before PowerOn
-  ansible.builtin.command: 'sleep 20'
+- name: Pause To Let iDRAC Shutdown Before PowerOn
+  ansible.builtin.pause:
+    seconds: 20
   when:
     - (bios_idrac_poweroff is successful) or (bios_idrac_poweroff is changed)
     - bios_idrac_poweroff is not skipped
@@ -150,3 +141,14 @@
         {{ status_dict.update({'changed': True}) }}
       {%- endif -%}
       {{ status_dict }}
+
+- name: Pause To Let iDRAC Trigger Job Before Proceeding
+  ansible.builtin.pause:
+    minutes: 2
+  when: bios_config_job is changed
+
+- name: Check BIOS Configuration Status
+  include_role:
+    name: configuration
+    tasks_from: check_bios
+  when: check_bios_jobs
