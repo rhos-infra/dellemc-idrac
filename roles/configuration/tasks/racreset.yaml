@@ -1,0 +1,32 @@
+---
+
+# - name: Reset iDRAC Using OpenManage
+#   dellemc.openmanage.idrac_reset:
+#     idrac_ip: "{{ inventory_hostname }}"
+#     idrac_user: "{{ ansible_user }}"
+#     idrac_password: "{{ ansible_password }}"
+#     idrac_port: "{{ openmanage_idrac_port }}"
+#     validate_certs: "{{ validate_ssl_certs }}"
+- name: Reset iDRAC With 'GracefulRestart'
+  ansible.builtin.uri:
+    url: "{{ idrac_uri }}/Managers/iDRAC.Embedded.1/Actions/Manager.Reset/"
+    method: 'POST'
+    headers:
+      Content-Type: application/json
+    body_format: 'json'
+    body:
+      ResetType: "GracefulRestart"
+    status_code:
+      - 204
+    user: "{{ ansible_user }}"
+    password: "{{ ansible_password }}"
+    force_basic_auth: True
+    return_content: True
+    validate_certs: "{{ validate_ssl_certs }}"
+
+- name: Pause While iDRAC Is Being Restarted
+  ansible.builtin.pause:
+    seconds: 20
+
+- name: Wait For iDRAC To Be Online (Using SSH)
+  ansible.builtin.wait_for:
