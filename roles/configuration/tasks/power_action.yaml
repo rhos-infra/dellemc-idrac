@@ -14,7 +14,7 @@
     - name: Wait For Running Jobs To Complete
       include_role:
         name: configuration
-        tasks_from: running_jobs
+        tasks_from: wait_for_running_jobs
   when: power_action in ['PowerForceRestart', 'PowerGracefulRestart', 'PowerReboot']
 
 - name: Execute Power Action '{{ power_action }}' On iDRAC
