@@ -28,6 +28,9 @@
   ansible.builtin.uri:
     url: "{{ item }}"
     method: 'GET'
+    status_code:
+      - 200
+      - 404
     user: "{{ ansible_user }}"
     password: "{{ ansible_password }}"
     force_basic_auth: True
@@ -38,6 +41,7 @@
   delay: 5
   until: >-
     (idrac_job['status'] == 200) or
-    (idrac_job['status'] == 400 and idrac_job['json']['error']['@Message.ExtendedInfo'] | selectattr('Message', 'contains', 'Invalid Job ID') | list)
+    (idrac_job['status'] == 400 and idrac_job['json']['error']['@Message.ExtendedInfo'] | selectattr('Message', 'contains', 'Invalid Job ID') | list) or
+    (idrac_job['status'] == 404 and idrac_job['json']['error']['@Message.ExtendedInfo'] | selectattr('Message', 'contains', 'The resource at the URI') | list)
   loop: "{{ idrac_jobs_uris }}"
   when: idrac_jobs['json']['Members']

@@ -6,12 +6,16 @@
   gather_facts: False
   any_errors_fatal: True
   vars:
-    # Placeholder variables
+    # Ansible variables assignment if not using Infrared
     idrac_query: False
     bios_attributes: False
     boot_mode: False
     boot_order: False
     power_action: False
+    delete_previous_idrac_jobs: False
+    racreset: False
+    validate_ssl_certs: False
+    check_bios_jobs: False # This is internal variable not meant to be overridden by users or infrared
   pre_tasks:
     - name: Build A List Of Variables For iDRAC
       set_fact:
@@ -23,7 +27,7 @@
         host_play_variables: "{{ host_play_variables | combine(hostvars[inventory_hostname][inventory_hostname]) }}"
       when: "inventory_hostname in hostvars[inventory_hostname]"
 
-    - name: Check if can authenticate with iDRAC
+    - name: Check if can authenticate with iDRAC Using REST API
       include_role:
         name: configuration
         tasks_from: healthcheck
@@ -34,6 +38,12 @@
         'boot_order' in host_play_variables or
         'power_action' in host_play_variables
 
+    - name: Reset iDRAC If Requested By User
+      include_role:
+        name: configuration
+        tasks_from: racreset
+      when: racreset
+
   tasks:
     - name: Query iDRAC
       include_role:
@@ -41,7 +51,13 @@
         tasks_from: query
       when: "'idrac_query' in host_play_variables"
 
-    - name:  Configure Bioss
+    - name: Delete Previous Completed iDRAC Jobs
+      include_role:
+        name: configuration
+        tasks_from: clear_job_inventory
+      when: delete_previous_idrac_jobs
+
+    - name: Configure Bios
       vars:
         host_bios_attributes: >-
           {%- if 'bios_attributes' in host_play_variables -%}
@@ -75,14 +91,48 @@
           {%- endif -%}
           {{ bios_dict }}
       block:
-        - name: Check BIOS Configuration Status
+        - name: Delete Pending BIOS Jobs
           include_role:
             name: configuration
             tasks_from: check_bios
-        - name: Update BIOS Configuration
+
+        - name: Clear Pending Configuration
+          include_role:
+            name: configuration
+            tasks_from: clear_pending_configuration
+
+        # In this scenario we will wait for job completion
+        - name: Update BIOS Configuration - Boot Mode
+          vars:
+            bios_config_command: 'SetBiosAttributes'
+            check_bios_jobs: True
+            host_bios_configuration:
+              BootMode: "{{ host_boot_mode }}"
           include_role:
             name: configuration
             tasks_from: configure_bios
+          when: >-
+              (host_bios_attributes) and (host_bios_attributes | type_debug == 'dict') or
+              (host_boot_mode) and (host_boot_mode in ['Bios', 'Uefi'])
+
+        - name: Update BIOS Configuration - Boot Attributes
+          vars:
+            bios_config_command: 'SetBiosAttributes'
+            check_bios_jobs: True
+          include_role:
+            name: configuration
+            tasks_from: configure_bios
+          when: >-
+              (host_bios_attributes) and (host_bios_attributes | type_debug == 'dict') or
+              (host_boot_mode) and (host_boot_mode in ['Bios', 'Uefi'])
+
+        - name: Update BIOS Configuration - Boot Order
+          vars:
+            bios_config_command: 'SetBootOrder'
+          include_role:
+            name: configuration
+            tasks_from: configure_bios
+          when: (host_boot_order) and (host_boot_order | type_debug == 'list')
       # We parse each BIOS attribute individually in order to build a correct config
       when: >-
           (host_bios_attributes) and (host_bios_attributes | type_debug == 'dict') or
