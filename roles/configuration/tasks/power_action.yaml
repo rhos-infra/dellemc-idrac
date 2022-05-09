@@ -10,12 +10,15 @@
       include_role:
         name: configuration
         tasks_from: retrieve_idrac_jobs
+      when: not ansible_check_mode
 
     - name: Wait For Running Jobs To Complete
       include_role:
         name: configuration
         tasks_from: wait_for_running_jobs
-  when: power_action in ['PowerForceRestart', 'PowerGracefulRestart', 'PowerReboot']
+  when:
+    - power_action in ['PowerForceRestart', 'PowerGracefulRestart', 'PowerReboot']
+    - not ansible_check_mode
 
 - name: Execute Power Action '{{ power_action }}' On iDRAC
   community.general.redfish_command:

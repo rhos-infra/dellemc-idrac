@@ -9,6 +9,7 @@
   include_role:
     name: configuration
     tasks_from: retrieve_idrac_jobs
+  when: not ansible_check_mode
 
 - name: Check If There Are Non Completed Jobs
   block:

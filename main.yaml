@@ -31,12 +31,7 @@
       include_role:
         name: configuration
         tasks_from: healthcheck
-      when: |-
-        'idrac_query' in host_play_variables or
-        'bios_attributes' in host_play_variables or
-        'boot_mode' in host_play_variables or
-        'boot_order' in host_play_variables or
-        'power_action' in host_play_variables
+      when: not ansible_check_mode
 
     - name: Reset iDRAC If Requested By User
       include_role:
@@ -95,11 +90,13 @@
           include_role:
             name: configuration
             tasks_from: check_bios
+          when: not ansible_check_mode
 
         - name: Clear Pending Configuration
           include_role:
             name: configuration
             tasks_from: clear_pending_configuration
+          when: not ansible_check_mode
 
         # In this scenario we will wait for job completion
         - name: Update BIOS Configuration - Boot Mode

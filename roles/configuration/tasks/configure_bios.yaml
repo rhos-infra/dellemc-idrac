@@ -151,4 +151,6 @@
   include_role:
     name: configuration
     tasks_from: check_bios
-  when: check_bios_jobs
+  when:
+    - not ansible_check_mode
+    - check_bios_jobs
