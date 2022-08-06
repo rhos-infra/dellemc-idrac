@@ -4,7 +4,7 @@
 - name: Configure BIOS
   block:
     - name: Set BIOS Configuration
-      community.general.redfish_config:
+      community.general.remote_management.redfish.redfish_config:
         category: Systems
         command: "{{ bios_config_command }}"
         bios_attributes: "{{ host_bios_configuration }}"
@@ -50,7 +50,7 @@
 - name: Create BIOS Configuration Job (Schedule BIOS Setting Update) If Needed
   block:
     - name: Create Job If Required
-      community.general.idrac_redfish_command:
+      community.general.remote_management.redfish.idrac_redfish_command:
         category: Systems
         command: CreateBiosConfigJob
         baseuri: "{{ inventory_hostname }}"
