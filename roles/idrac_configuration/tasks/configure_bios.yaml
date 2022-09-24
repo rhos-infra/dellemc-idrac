@@ -1,5 +1,4 @@
 ---
-
 # Will attempt to configure BIOS
 - name: Configure BIOS
   block:
@@ -86,7 +85,7 @@
   vars:
     power_action: 'PowerForceOff'
   import_role:
-    name: configuration
+    name: idrac_configuration
     tasks_from: power_action
   when: >-
     'self_created_job' in bios_config_change or
@@ -119,7 +118,7 @@
   vars:
     power_action: 'PowerOn'
   import_role:
-    name: configuration
+    name: idrac_configuration
     tasks_from: power_action
   # Will attempt to wait for iDRAC to be powered on because in some cases GracefulShutdown will take a while.
   retries: "{{ task_retries }}"
@@ -149,7 +148,7 @@
 
 - name: Check BIOS Configuration Status
   include_role:
-    name: configuration
+    name: idrac_configuration
     tasks_from: check_bios
   when:
     - not ansible_check_mode

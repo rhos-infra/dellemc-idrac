@@ -1,7 +1,7 @@
 ---
 
 - include_role:
-    name: configuration
+    name: idrac_configuration
     tasks_from: retrieve_idrac_jobs
   when: not ansible_check_mode
 

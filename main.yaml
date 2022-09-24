@@ -29,26 +29,26 @@
 
     - name: Check if can authenticate with iDRAC Using REST API
       include_role:
-        name: configuration
+        name: idrac_configuration
         tasks_from: healthcheck
       when: not ansible_check_mode
 
     - name: Reset iDRAC If Requested By User
       include_role:
-        name: configuration
+        name: idrac_configuration
         tasks_from: racreset
       when: racreset
 
   tasks:
     - name: Query iDRAC
       include_role:
-        name: configuration
+        name: idrac_configuration
         tasks_from: query
       when: "'idrac_query' in host_play_variables"
 
     - name: Delete Previous Completed iDRAC Jobs
       include_role:
-        name: configuration
+        name: idrac_configuration
         tasks_from: clear_job_inventory
       when: delete_previous_idrac_jobs
 
@@ -88,15 +88,17 @@
       block:
         - name: Delete Pending BIOS Jobs
           include_role:
-            name: configuration
+            name: idrac_configuration
             tasks_from: check_bios
           when: not ansible_check_mode
 
         - name: Clear Pending Configuration
           include_role:
-            name: configuration
+            name: idrac_configuration
             tasks_from: clear_pending_configuration
-          when: not ansible_check_mode
+          when:
+            - not ansible_check_mode
+            - not skip_clear_pending
 
         # In this scenario we will wait for job completion
         - name: Update BIOS Configuration - Boot Mode
@@ -106,30 +108,32 @@
             host_bios_configuration:
               BootMode: "{{ host_boot_mode }}"
           include_role:
-            name: configuration
+            name: idrac_configuration
             tasks_from: configure_bios
-          when: >-
-              (host_bios_attributes) and (host_bios_attributes | type_debug == 'dict') or
-              (host_boot_mode) and (host_boot_mode in ['Bios', 'Uefi'])
+          when:
+            - host_boot_mode
+            - host_boot_mode in ['Bios', 'Uefi']
 
         - name: Update BIOS Configuration - Boot Attributes
           vars:
             bios_config_command: 'SetBiosAttributes'
             check_bios_jobs: True
           include_role:
-            name: configuration
+            name: idrac_configuration
             tasks_from: configure_bios
-          when: >-
-              (host_bios_attributes) and (host_bios_attributes | type_debug == 'dict') or
-              (host_boot_mode) and (host_boot_mode in ['Bios', 'Uefi'])
+          when:
+            - host_bios_attributes
+            - host_bios_attributes | type_debug == 'dict'
 
         - name: Update BIOS Configuration - Boot Order
           vars:
             bios_config_command: 'SetBootOrder'
           include_role:
-            name: configuration
+            name: idrac_configuration
             tasks_from: configure_bios
-          when: (host_boot_order) and (host_boot_order | type_debug == 'list')
+          when:
+            - host_boot_order
+            - host_boot_order | type_debug == 'list'
       # We parse each BIOS attribute individually in order to build a correct config
       when: >-
           (host_bios_attributes) and (host_bios_attributes | type_debug == 'dict') or
@@ -138,7 +142,7 @@
 
     - name: Power Action
       include_role:
-        name: configuration
+        name: idrac_configuration
         tasks_from: power_action
       when:
         - "'power_action' in host_play_variables"

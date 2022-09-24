@@ -129,6 +129,7 @@ dell-idrac2.example.com:  # hostname that we wish to override.
 | `power_action`               | `--power-action`               | Execute power action on iDRAC.                                       | `False` | `PowerOn`                                                         | `--power-action 'PowerOn'`                                                   |
 | `delete_previous_idrac_jobs` | `--delete_previous_idrac_jobs` | Remove previously completed jobs from iDRAC job inventory.           | `False` | `True`                                                            | `--delete-previous-jobs`                                                     |
 | `racreset`                   | `--racreset`                   | Performs 'GracefulRestart' on iDRAC controller.                      | `False` | `True`                                                            | `--racreset`                                                                 |
+| `skip_clear_pending`         | `--skip-clear-pending`         | Skips clearing pending BIOS attributes.                              | `false` | `true`                                                            |                                                                              |
 
 ## Usage
 

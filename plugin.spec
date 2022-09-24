@@ -89,6 +89,12 @@ subparsers:
                         Remove previously completed jobs from iDRAC job inventory.
                     required: False
                     ansible_variable: 'delete_previous_idrac_jobs'
+                skip-clear-pending:
+                    type: Flag
+                    help: |
+                        Skips clearing pending BIOS attributes.
+                    required: false
+                    ansible_variable: 'skip_clear_pending'
             - title: iDRAC power management
               options:
                 racreset:

@@ -7,7 +7,7 @@
 
 - name: Retrieve Jobs From iDRAC
   include_role:
-    name: configuration
+    name: idrac_configuration
     tasks_from: retrieve_idrac_jobs
   when: not ansible_check_mode
 
@@ -58,5 +58,5 @@
 
 - name: Wait For Running Jobs To Complete
   include_role:
-    name: configuration
+    name: idrac_configuration
     tasks_from: wait_for_running_jobs
