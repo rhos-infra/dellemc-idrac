@@ -33,7 +33,7 @@ subparsers:
                 timeout:
                     type: int
                     help: |
-                        Timeout in secdonds for URL requests to OOB(out of band) controller.
+                        Timeout in seconds for URL requests to OOB(out of band) controller.
                     required: False
                     default: 30
                     ansible_variable: idrac_timeout

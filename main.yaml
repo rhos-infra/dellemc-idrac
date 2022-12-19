@@ -13,6 +13,7 @@
     boot_order: False
     power_action: False
     delete_previous_idrac_jobs: False
+    skip_clear_pending: false
     racreset: False
     validate_ssl_certs: False
     check_bios_jobs: False # This is internal variable not meant to be overridden by users or infrared
