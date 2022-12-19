@@ -112,7 +112,7 @@
             name: idrac_configuration
             tasks_from: configure_bios
           when:
-            - host_boot_mode
+            - host_boot_mode is defined
             - host_boot_mode in ['Bios', 'Uefi']
 
         - name: Update BIOS Configuration - Boot Attributes
